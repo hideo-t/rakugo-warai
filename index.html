@@ -101,9 +101,16 @@ video{width:100%;max-height:300px;background:#000;border-radius:8px;display:bloc
       <div class="fname" id="mediaInfo">MP4などの動画。大きすぎて読めないときは、音声だけ書き出したファイルでも使えます。</div>
     </div>
     <div class="step">
-      <h2><span class="num">2</span>笑い声ファイルを選ぶ</h2>
-      <input type="file" id="fileLaughs" accept="audio/*" multiple>
-      <div class="chips" id="laughChips"><span class="fname">何本でも同時に選べます。名前を押すと試聴できます。</span></div>
+      <h2><span class="num">2</span>笑い声（標準の14本入り）</h2>
+      <div class="fname" id="laughInfo">標準の笑い声を読み込んでいます…</div>
+      <div class="chips" id="laughChips"></div>
+      <details>
+        <summary class="fname" style="cursor:pointer">別の笑い声を使う</summary>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+          <input type="file" id="fileLaughs" accept="audio/*" multiple>
+          <button class="btn" id="resetLaughs" type="button">標準の14本に戻す</button>
+        </div>
+      </details>
     </div>
     <div class="step">
       <h2><span class="num">3</span>置き方を決めて実行</h2>
@@ -189,10 +196,28 @@ function fmt(t){t=Math.max(0,t);const h=Math.floor(t/3600),m=Math.floor(t%3600/6
 function fmtLong(t){const m=Math.floor(t/60),s=Math.round(t%60);return `${m}分${s}秒`;}
 
 /* ---------- 読み込み ---------- */
-async function decodeAt(file,rate){
-  const ab=await file.arrayBuffer();
+async function decodeAt(file,rate){return decodeAB(await file.arrayBuffer(),rate);}
+async function decodeAB(ab,rate){
   const oc=new OfflineAudioContext(1,1,rate);
   return await oc.decodeAudioData(ab);
+}
+/* 標準の笑い声：sounds/laugh01.mp3〜laugh14.mp3（10秒ずつ） */
+const DEFAULT_LAUGHS=Array.from({length:14},(_,i)=>`sounds/laugh${String(i+1).padStart(2,'0')}.mp3`);
+async function loadDefaultLaughs(){
+  const info=$('#laughInfo');
+  info.textContent='標準の笑い声を読み込んでいます…';
+  const res=await Promise.all(DEFAULT_LAUGHS.map(async(u,i)=>{
+    try{const r=await fetch(u);if(!r.ok)throw 0;return {name:`笑い${String(i+1).padStart(2,'0')}`,buf:await decodeAB(await r.arrayBuffer(),OUT_SR)};}
+    catch(_){return null;}
+  }));
+  const list=res.filter(Boolean);
+  if(list.length){
+    laughs=list; ev.forEach(x=>{if(x.i>=laughs.length)x.i=x.i%laughs.length;fitToLaugh(x);});
+    info.textContent=`標準の笑い声 ${list.length}本を使います。名前を押すと試聴できます。`;
+  }else{
+    info.textContent='標準の笑い声を読み込めませんでした（パソコンでindex.htmlを直接開いた場合は読めません）。下の「別の笑い声を使う」から選んでください。';
+  }
+  renderChips(); updateUI(); draw();
 }
 function analyze(buf){
   const sr=buf.sampleRate, win=Math.round(sr*FR), m=Math.floor(buf.length/win);
@@ -240,7 +265,7 @@ $('#fileLaughs').addEventListener('change',async e=>{
     try{list.push({name:f.name,buf:await decodeAt(f,OUT_SR)});}catch(err){bad.push(f.name);}
   }
   if(list.length){
-    laughs=list;
+    laughs=list; $('#laughInfo').textContent=`選んだ笑い声 ${list.length}本を使います。`;
     ev.forEach(x=>{if(x.i>=laughs.length) x.i=Math.floor(Math.random()*laughs.length); fitToLaugh(x);});
   }
   renderChips();
@@ -316,7 +341,9 @@ const placers={
     for(const g of keep){
       const t=g.s+rnd(0.05,0.25);
       out.push(makeEvent(t,clamp(g.len*rnd(0.9,1.4),0.8,4.5)));
-      if(g.len>=2.0) out.push(makeEvent(t+rnd(0.1,0.45),clamp(g.len*rnd(0.8,1.2),1,4.5))); // 長い間は2本重ねて大きな笑いに
+      if(g.len>=2.0){ // 長い間は2本重ねて大きな笑いに（2本目は少し小さく）
+        const e2=makeEvent(t+rnd(0.1,0.45),clamp(g.len*rnd(0.8,1.2),1,4.5)); e2.gain*=0.7; out.push(e2);
+      }
     }
     return {events:out,found:gaps.length};
   }
@@ -588,7 +615,8 @@ for(const [id,f] of [['minGap',v=>v+'秒'],['amount',v=>v+'%'],['th',v=>v+'%'],[
   const el=$('#'+id), out=$('#'+id+'V'), up=()=>{out.textContent=f(el.value);};
   el.addEventListener('input',()=>{up(); if(id==='th')draw(); if(id==='vol'&&master)master.gain.value=vol();}); up();
 }
-layout(); updateUI();
+$('#resetLaughs').addEventListener('click',()=>{$('#fileLaughs').value='';loadDefaultLaughs();});
+layout(); updateUI(); loadDefaultLaughs();
 </script>
 </body>
 </html>
