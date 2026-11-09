@@ -1,0 +1,594 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>高座わらい</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@700&family=Zen+Kaku+Gothic+New:wght@400;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* レイアウト：上に手順パネル、中央にプレビューと選択中の笑い、下に横長タイムライン。定式幕の三色を目印に使う */
+:root{
+  --bg:#f2f3ef; --surface:#ffffff; --ink:#1c1e1b; --ink-soft:#5a6058; --line:#d8dcd3;
+  --moegi:#2e6a3b; --moegi-ink:#ffffff; --kaki:#c45f28; --kaki-soft:#f1d6c4;
+  --wave:#7f8a7c; --wave-quiet:#d0d6cc; --err:#b3261e;
+  --f-display:"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho",serif;
+  --f-body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#131612; --surface:#1b1f1a; --ink:#e8ebe4; --ink-soft:#a2a99e; --line:#2f352d;
+  --moegi:#7cbc84; --moegi-ink:#0f1a10; --kaki:#e7894f; --kaki-soft:#4a2c1b;
+  --wave:#7a8476; --wave-quiet:#323930; --err:#f2766c; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#131612; --surface:#1b1f1a; --ink:#e8ebe4; --ink-soft:#a2a99e; --line:#2f352d;
+  --moegi:#7cbc84; --moegi-ink:#0f1a10; --kaki:#e7894f; --kaki-soft:#4a2c1b;
+  --wave:#7a8476; --wave-quiet:#323930; --err:#f2766c; color-scheme:dark}
+
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.7 var(--f-body)}
+.maku{height:6px;background:linear-gradient(90deg,var(--ink) 0 33.3%,var(--kaki) 33.3% 66.6%,var(--moegi) 66.6%)}
+.wrap{max-width:1200px;margin:0 auto;padding-block:20px 48px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:20px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 16px}
+h1{font:700 28px/1.2 var(--f-display);margin:0;letter-spacing:.04em}
+header p{margin:0;color:var(--ink-soft)}
+h2{font-size:13px;margin:0 0 8px;letter-spacing:.08em;color:var(--ink-soft);font-weight:700}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.step{background:var(--surface);padding:16px;min-width:0;display:flex;flex-direction:column;gap:10px}
+.num{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--ink);color:var(--surface);font-size:12px;margin-right:6px}
+input[type=file]{font:inherit;font-size:13px;max-width:100%;color:var(--ink-soft)}
+input[type=file]::file-selector-button{font:inherit;font-weight:700;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:6px;padding:6px 12px;margin-right:10px;cursor:pointer}
+.fname{font-size:13px;color:var(--ink-soft);word-break:break-all}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:inherit;font-size:12px;border:1px solid var(--kaki);color:var(--kaki);background:transparent;border-radius:99px;padding:2px 10px;cursor:pointer;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip:hover{background:var(--kaki-soft)}
+select,button{font:inherit}
+select{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:6px;padding:6px 8px;width:100%}
+.field{display:grid;grid-template-columns:1fr auto;gap:2px 10px;font-size:13px;align-items:center}
+.field input{grid-column:1/-1;width:100%;accent-color:var(--moegi)}
+.field output{font-family:var(--f-mono);font-variant-numeric:tabular-nums;color:var(--ink-soft)}
+.btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer}
+.btn:hover:not(:disabled){border-color:var(--ink-soft)}
+.btn.primary{background:var(--moegi);border-color:var(--moegi);color:var(--moegi-ink)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn:focus-visible,.chip:focus-visible,select:focus-visible,input:focus-visible,.tl-scroll:focus-visible{outline:2px solid var(--kaki);outline-offset:2px}
+.mid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:20px}
+@media (max-width:760px){.mid{grid-template-columns:1fr}}
+video{width:100%;max-height:300px;background:#000;border-radius:8px;display:block}
+.transport{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:10px}
+.clock{font:500 18px var(--f-mono);font-variant-numeric:tabular-nums}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.sel-empty{color:var(--ink-soft);font-size:14px}
+#selBody:not(.sel-empty){display:flex;flex-direction:column;gap:12px}
+.kv{margin:0}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:14px}
+.kv dt{color:var(--ink-soft)} .kv dd{margin:0;font-family:var(--f-mono);font-variant-numeric:tabular-nums;word-break:break-all}
+.row{display:flex;flex-wrap:wrap;gap:8px}
+.tl-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px}
+.count{font-weight:700} .count b{color:var(--kaki);font-family:var(--f-mono)}
+.tl-box{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+#ov{display:block;width:100%;height:40px;border-bottom:1px solid var(--line);cursor:pointer}
+.tl-scroll{overflow-x:auto;overflow-y:hidden}
+.tl-spacer{height:196px}
+#tl{position:sticky;left:0;display:block;height:196px;touch-action:pan-x}
+.help{font-size:13px;color:var(--ink-soft);margin:0}
+.help kbd{font-family:var(--f-mono);font-size:12px;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;background:var(--bg)}
+.zoom{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-soft)}
+.zoom input{width:140px;accent-color:var(--moegi)}
+.out{flex-direction:row;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+#status{font-size:14px;padding:10px 14px;border-radius:8px;background:var(--surface);border:1px solid var(--line)}
+#status.busy{border-color:var(--moegi)} #status.error{border-color:var(--err);color:var(--err)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="maku" aria-hidden="true"></div>
+<div class="wrap">
+  <header>
+    <h1>高座わらい</h1>
+    <p>落語の動画に、毎回ちがう客席の笑い声を自動で置くツール</p>
+  </header>
+
+  <section class="steps" aria-label="準備">
+    <div class="step">
+      <h2><span class="num">1</span>動画を選ぶ</h2>
+      <input type="file" id="fileMedia" accept="video/*,audio/*">
+      <div class="fname" id="mediaInfo">MP4などの動画。大きすぎて読めないときは、音声だけ書き出したファイルでも使えます。</div>
+    </div>
+    <div class="step">
+      <h2><span class="num">2</span>笑い声ファイルを選ぶ</h2>
+      <input type="file" id="fileLaughs" accept="audio/*" multiple>
+      <div class="chips" id="laughChips"><span class="fname">何本でも同時に選べます。名前を押すと試聴できます。</span></div>
+    </div>
+    <div class="step">
+      <h2><span class="num">3</span>置き方を決めて実行</h2>
+      <select id="mode" aria-label="置き方">
+        <option value="silence">無音の「間」に置く（速い）</option>
+        <option value="transcript" disabled>文字起こしで判断（次の版で追加）</option>
+      </select>
+      <div class="field"><label for="minGap">何秒以上の間に入れるか</label><output id="minGapV"></output>
+        <input type="range" id="minGap" min="0.4" max="3" step="0.1" value="1.0"></div>
+      <div class="field"><label for="amount">笑いの量（見つけた間のうち何割に入れるか）</label><output id="amountV"></output>
+        <input type="range" id="amount" min="10" max="100" step="5" value="50"></div>
+      <div class="field"><label for="th">無音とみなす音の小ささ</label><output id="thV"></output>
+        <input type="range" id="th" min="4" max="40" step="1" value="14"></div>
+      <button class="btn primary" id="run" disabled>自動配置</button>
+    </div>
+  </section>
+
+  <div id="status" role="status" aria-live="polite">①と②でファイルを選んでください。ファイルはこのパソコンの中だけで処理され、どこにも送信されません。</div>
+
+  <section class="mid">
+    <div class="panel">
+      <h2>プレビュー</h2>
+      <video id="media" controls playsinline preload="metadata"></video>
+      <div class="transport">
+        <button class="btn" id="play" disabled>▶ 再生</button>
+        <span class="clock" id="clock">0:00.0</span>
+        <div class="field" style="flex:1;min-width:180px"><label for="vol">笑い声の音量</label><output id="volV"></output>
+          <input type="range" id="vol" min="0" max="200" step="5" value="100"></div>
+      </div>
+    </div>
+    <div class="panel" id="selPanel">
+      <h2>選んでいる笑い声</h2>
+      <div id="selBody" class="sel-empty">タイムラインの笑い声（柿色の帯）を押すと、ここで調整できます。</div>
+    </div>
+  </section>
+
+  <section>
+    <div class="tl-head">
+      <div class="count">笑い声 <b id="count">0</b> か所</div>
+      <div class="zoom"><label for="zoom">拡大</label><input type="range" id="zoom" min="4" max="160" step="1" value="30"></div>
+    </div>
+    <div class="tl-box">
+      <canvas id="ov" aria-label="全体の地図。押した場所へ移動します"></canvas>
+      <div class="tl-scroll" id="sc" tabindex="0" aria-label="タイムライン"><div class="tl-spacer" id="sp"><canvas id="tl"></canvas></div></div>
+    </div>
+    <p class="help" style="margin-top:8px">帯をドラッグで前後に移動 ／ 何もない所を押すとそこから再生 ／ ダブルクリックで笑い声を追加 ／ <kbd>Delete</kbd> 削除 ／ <kbd>←</kbd><kbd>→</kbd> 0.1秒ずらす ／ <kbd>Space</kbd> 再生・停止</p>
+  </section>
+
+  <section class="panel out">
+    <div>
+      <h2 style="margin-bottom:2px">書き出し</h2>
+      <p class="help">動画と同じ長さの笑い声だけのWAV（48kHz・ステレオ）を作ります。編集ソフトで動画の頭（0秒）にそろえて置けば位置が合います。</p>
+    </div>
+    <div class="row">
+      <button class="btn" id="saveJson" disabled>配置を保存</button>
+      <label class="btn" for="loadJson" style="display:inline-block">配置を読み込む</label>
+      <input type="file" id="loadJson" accept=".json,application/json" hidden>
+      <button class="btn primary" id="export" disabled>笑い声トラックを書き出す</button>
+    </div>
+  </section>
+</div>
+
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const tok=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const FR=0.025;          // 解析の1コマ（秒）
+const ANALYZE_SR=16000;  // 解析用サンプルレート
+const OUT_SR=48000;      // 書き出しサンプルレート
+
+let mediaFile=null, mediaURL=null, duration=0, frames=null, ref=0;
+let laughs=[];           // {name, buf}
+let ev=[];               // {id,t,i,off,dur,gain,rate,pan}
+let selId=null, nextId=1, pps=30, drag=null, busy=false;
+let ac=null, master=null, scheduled=new Map(), schedTimer=null, raf=0;
+
+const media=$('#media'), sc=$('#sc'), sp=$('#sp'), cv=$('#tl'), ov=$('#ov');
+
+function setStatus(msg,kind=''){const s=$('#status');s.textContent=msg;s.className=kind;}
+function fmt(t){t=Math.max(0,t);const h=Math.floor(t/3600),m=Math.floor(t%3600/60),s=(t%60).toFixed(1).padStart(4,'0');return (h?h+':'+String(m).padStart(2,'0'):m)+':'+s;}
+function fmtLong(t){const m=Math.floor(t/60),s=Math.round(t%60);return `${m}分${s}秒`;}
+
+/* ---------- 読み込み ---------- */
+async function decodeAt(file,rate){
+  const ab=await file.arrayBuffer();
+  const oc=new OfflineAudioContext(1,1,rate);
+  return await oc.decodeAudioData(ab);
+}
+function analyze(buf){
+  const sr=buf.sampleRate, win=Math.round(sr*FR), m=Math.floor(buf.length/win);
+  const chs=[]; for(let c=0;c<buf.numberOfChannels;c++) chs.push(buf.getChannelData(c));
+  const nc=chs.length, out=new Float32Array(m);
+  for(let k=0;k<m;k++){
+    let s=0; const a=k*win, b=a+win;
+    for(let j=a;j<b;j++){let v=0;for(let c=0;c<nc;c++)v+=chs[c][j];v/=nc;s+=v*v;}
+    out[k]=Math.sqrt(s/win);
+  }
+  frames=out;
+  const sorted=Float32Array.from(out).sort();
+  ref=sorted[Math.floor(m*0.9)]||sorted[m-1]||1e-4;
+  if(ref<=0) ref=1e-4;
+}
+
+$('#fileMedia').addEventListener('change',async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  stopPreview();
+  mediaFile=f;
+  if(mediaURL) URL.revokeObjectURL(mediaURL);
+  mediaURL=URL.createObjectURL(f); media.src=mediaURL;
+  frames=null; duration=0; ev=[]; selId=null;
+  $('#mediaInfo').textContent=f.name;
+  busy=true; updateUI();
+  setStatus('音声を取り出して解析しています…（40分の動画だと1分ほどかかります）','busy');
+  try{
+    const buf=await decodeAt(f,ANALYZE_SR);
+    duration=buf.duration; analyze(buf);
+    $('#mediaInfo').textContent=`${f.name}（${fmtLong(duration)}）`;
+    setStatus(laughs.length?'準備ができました。「自動配置」を押してください。':'音声を読み込みました。次に②で笑い声ファイルを選んでください。');
+  }catch(err){
+    console.error(err);
+    setStatus('この動画から音声を取り出せませんでした。編集ソフトで音声だけ（WAV・M4A・MP3）を書き出して、それを①で選び直してください。','error');
+  }
+  busy=false; layout(); updateUI(); updateSel();
+});
+
+$('#fileLaughs').addEventListener('change',async e=>{
+  const files=[...e.target.files]; if(!files.length) return;
+  busy=true; updateUI();
+  setStatus('笑い声を読み込んでいます…','busy');
+  const list=[], bad=[];
+  for(const f of files){
+    try{list.push({name:f.name,buf:await decodeAt(f,OUT_SR)});}catch(err){bad.push(f.name);}
+  }
+  if(list.length){
+    laughs=list;
+    ev.forEach(x=>{if(x.i>=laughs.length) x.i=Math.floor(Math.random()*laughs.length); fitToLaugh(x);});
+  }
+  renderChips();
+  busy=false; updateUI(); draw();
+  if(bad.length) setStatus(`読み込めなかったファイル：${bad.join('、')}。WAVかMP3で選び直してください。`,'error');
+  else setStatus(frames?`笑い声 ${laughs.length}本を読み込みました。「自動配置」を押してください。`:`笑い声 ${laughs.length}本を読み込みました。次に①で動画を選んでください。`);
+});
+
+function renderChips(){
+  const box=$('#laughChips'); box.innerHTML='';
+  laughs.forEach((l,i)=>{
+    const b=document.createElement('button'); b.className='chip'; b.type='button';
+    b.textContent=`▶ ${l.name}（${l.buf.duration.toFixed(1)}秒）`;
+    b.title='試聴する';
+    b.onclick=()=>{ensureAC();const s=ac.createBufferSource();s.buffer=l.buf;s.connect(master);s.start();setTimeout(()=>{try{s.stop()}catch(_){}} ,4000);};
+    box.appendChild(b);
+  });
+}
+
+/* ---------- 笑い声1発の作り方（ワンパターン回避） ---------- */
+function makeEvent(t,want){
+  const i=Math.floor(Math.random()*laughs.length);
+  const e={id:nextId++,t,i,dur:want,off:0,gain:rnd(0.55,1),rate:rnd(0.93,1.07),pan:rnd(-0.35,0.35)};
+  return fitToLaugh(e,true);
+}
+function fitToLaugh(e,newOffset){
+  const b=laughs[e.i]&&laughs[e.i].buf; if(!b) return e;
+  e.dur=clamp(e.dur,0.4,Math.max(0.4,b.duration/e.rate-0.05));
+  const maxOff=Math.max(0,b.duration-e.dur*e.rate);
+  e.off=newOffset?rnd(0,maxOff):clamp(e.off,0,maxOff);
+  return e;
+}
+function reroll(e){
+  e.i=Math.floor(Math.random()*laughs.length);
+  e.gain=rnd(0.55,1); e.rate=rnd(0.93,1.07); e.pan=rnd(-0.35,0.35);
+  fitToLaugh(e,true);
+}
+
+/* 笑い声を ctx の dest に鳴らす。ライブ再生と書き出しの両方で使う */
+function scheduleEvent(ctx,e,when,dest,vol=1){
+  const L=laughs[e.i]; if(!L) return null;
+  const src=ctx.createBufferSource(); src.buffer=L.buf; src.playbackRate.value=e.rate;
+  const g=ctx.createGain(), p=ctx.createStereoPanner(); p.pan.value=e.pan;
+  src.connect(g).connect(p).connect(dest);
+  const G=e.gain*vol, fi=Math.min(0.15,e.dur*0.2), fo=Math.min(0.6,e.dur*0.35);
+  g.gain.setValueAtTime(0,when);
+  g.gain.linearRampToValueAtTime(G,when+fi);
+  g.gain.setValueAtTime(G,when+e.dur-fo);
+  g.gain.linearRampToValueAtTime(0,when+e.dur);
+  src.start(when,e.off,e.dur*e.rate);
+  src.stop(when+e.dur+0.05);
+  return src;
+}
+
+/* ---------- 自動配置 ----------
+   置き方ごとに関数を用意する。文字起こし版（ブラウザ内Whisper）やAI APIでのオチ判定は
+   placers に同じ形の関数を足せば差し替えられる。 */
+const placers={
+  silence(){
+    const thr=ref*(+$('#th').value/100), minF=Math.round(+$('#minGap').value/FR);
+    const gaps=[]; let st=-1;
+    for(let k=0;k<=frames.length;k++){
+      const quiet=k<frames.length&&frames[k]<thr;
+      if(quiet){if(st<0)st=k;}
+      else if(st>=0){
+        if(k-st>=minF && st>0 && k<frames.length) gaps.push({s:st*FR,len:(k-st)*FR});
+        st=-1;
+      }
+    }
+    gaps.sort((a,b)=>b.len-a.len);
+    const keep=gaps.slice(0,Math.round(gaps.length*(+$('#amount').value/100)));
+    const out=[];
+    for(const g of keep){
+      const t=g.s+rnd(0.05,0.25);
+      out.push(makeEvent(t,clamp(g.len*rnd(0.9,1.4),0.8,4.5)));
+      if(g.len>=2.0) out.push(makeEvent(t+rnd(0.1,0.45),clamp(g.len*rnd(0.8,1.2),1,4.5))); // 長い間は2本重ねて大きな笑いに
+    }
+    return {events:out,found:gaps.length};
+  }
+};
+
+$('#run').addEventListener('click',()=>{
+  if(!frames||!laughs.length) return;
+  stopPreview();
+  const r=placers[$('#mode').value]();
+  ev=r.events.sort((a,b)=>a.t-b.t); selId=null;
+  updateSel(); updateUI(); draw();
+  if(!ev.length) setStatus(`間が見つかりませんでした（候補 ${r.found}か所）。「何秒以上の間に入れるか」を短くするか、「無音とみなす音の小ささ」を大きくしてみてください。`,'error');
+  else setStatus(`間を ${r.found}か所見つけ、${ev.length}本の笑い声を置きました。気になる所を再生して調整してください。`);
+});
+
+/* ---------- プレビュー再生 ---------- */
+function vol(){return +$('#vol').value/100;}
+function ensureAC(){
+  if(!ac){ac=new AudioContext();master=ac.createGain();master.connect(ac.destination);}
+  master.gain.value=vol(); if(ac.state==='suspended') ac.resume();
+  return ac;
+}
+function stopAll(){for(const s of scheduled.values()){try{s&&s.stop()}catch(_){}}scheduled.clear();}
+function tick(){
+  if(media.paused||!ac) return;
+  const cur=media.currentTime, now=ac.currentTime, rate=media.playbackRate||1;
+  for(const e of ev){
+    if(scheduled.has(e.id)) continue;
+    if(e.t>=cur-0.03 && e.t<cur+1.5) scheduled.set(e.id,scheduleEvent(ac,e,Math.max(now,now+(e.t-cur)/rate),master));
+  }
+}
+function loop(){draw();clock();if(!media.paused) raf=requestAnimationFrame(loop);}
+function stopPreview(){media.pause();stopAll();}
+media.addEventListener('play',()=>{ensureAC();stopAll();clearInterval(schedTimer);schedTimer=setInterval(tick,150);tick();cancelAnimationFrame(raf);loop();$('#play').textContent='❚❚ 停止';});
+media.addEventListener('pause',()=>{clearInterval(schedTimer);stopAll();$('#play').textContent='▶ 再生';draw();});
+media.addEventListener('seeking',()=>{stopAll();});
+media.addEventListener('seeked',()=>{tick();draw();clock();});
+media.addEventListener('timeupdate',()=>{if(media.paused){draw();clock();}});
+$('#play').addEventListener('click',()=>{media.paused?media.play():media.pause();});
+function clock(){$('#clock').textContent=fmt(media.currentTime||0);}
+function seek(t){media.currentTime=clamp(t,0,duration);clock();draw();}
+function edited(){if(!media.paused){stopAll();tick();} updateUI(); draw();}
+
+/* ---------- タイムライン描画 ---------- */
+const RULER=22, WAVE_T=26, WAVE_H=92, LANE_T=126, LANE_H=20, LANE_GAP=4, H=196;
+function layout(){
+  sp.style.width=Math.max(sc.clientWidth,Math.ceil(duration*pps))+'px';
+  const dpr=window.devicePixelRatio||1;
+  for(const [c,h] of [[cv,H],[ov,40]]){
+    const w=c===cv?sc.clientWidth:ov.clientWidth;
+    c.style.width=w+'px'; c.width=Math.round(w*dpr); c.height=Math.round(h*dpr);
+    c.getContext('2d').setTransform(dpr,0,0,dpr,0,0);
+  }
+  draw();
+}
+function assignLanes(){
+  const s=[...ev].sort((a,b)=>a.t-b.t), ends=[];
+  for(const e of s){let l=ends.findIndex(x=>x<=e.t);if(l<0){l=ends.length;ends.push(0);}ends[l]=e.t+e.dur;e._lane=Math.min(l,2);}
+}
+function blockRect(e,x0){return {x:e.t*pps-x0,y:LANE_T+e._lane*(LANE_H+LANE_GAP),w:Math.max(4,e.dur*pps),h:LANE_H};}
+function draw(){
+  const g=cv.getContext('2d'), W=sc.clientWidth, x0=sc.scrollLeft;
+  const C={bg:tok('--surface'),ink:tok('--ink'),soft:tok('--ink-soft'),line:tok('--line'),wave:tok('--wave'),quiet:tok('--wave-quiet'),kaki:tok('--kaki'),kakiSoft:tok('--kaki-soft'),moegi:tok('--moegi')};
+  g.fillStyle=C.bg; g.fillRect(0,0,W,H);
+  if(!frames){
+    g.fillStyle=C.soft; g.font='14px '+tok('--f-body'); g.textAlign='center';
+    g.fillText('①で動画、②で笑い声を選んで「自動配置」を押すと、ここに波形と笑い声が並びます',W/2,H/2);
+    g.textAlign='left'; drawOverview(C); return;
+  }
+  // 目盛り
+  const steps=[1,2,5,10,15,30,60,120,300,600]; const step=steps.find(s=>s*pps>=72)||600;
+  g.strokeStyle=C.line; g.fillStyle=C.soft; g.font='11px '+tok('--f-mono'); g.lineWidth=1;
+  const tA=x0/pps, tB=(x0+W)/pps;
+  for(let t=Math.floor(tA/step)*step;t<=tB;t+=step){
+    const x=Math.round(t*pps-x0)+.5; g.beginPath(); g.moveTo(x,RULER-6); g.lineTo(x,H); g.stroke();
+    g.fillText(fmt(t).replace(/\.0$/,''),x+4,14);
+  }
+  g.beginPath(); g.moveTo(0,RULER+.5); g.lineTo(W,RULER+.5); g.stroke();
+  // 波形（間の部分は薄く）
+  const thr=ref*(+$('#th').value/100), mid=WAVE_T+WAVE_H/2, norm=ref*1.6;
+  for(let x=0;x<W;x++){
+    const kA=Math.floor((x0+x)/pps/FR), kB=Math.max(kA,Math.floor((x0+x+1)/pps/FR));
+    if(kA>=frames.length) break;
+    let m=0; for(let k=kA;k<=kB&&k<frames.length;k++) if(frames[k]>m) m=frames[k];
+    const h=Math.max(1,Math.min(1,m/norm)*WAVE_H/2);
+    g.fillStyle=m<thr?C.quiet:C.wave; g.fillRect(x,mid-h,1,h*2);
+  }
+  // 笑い声の帯
+  assignLanes();
+  g.font='11px '+tok('--f-body');
+  for(const e of ev){
+    const r=blockRect(e,x0); if(r.x>W||r.x+r.w<0) continue;
+    g.globalAlpha=0.45+e.gain*0.55; g.fillStyle=C.kaki; roundRect(g,r.x,r.y,r.w,r.h,4); g.fill(); g.globalAlpha=1;
+    // 帯から波形へ細い線
+    g.strokeStyle=C.kaki; g.globalAlpha=.35; g.beginPath(); g.moveTo(Math.round(r.x)+.5,WAVE_T); g.lineTo(Math.round(r.x)+.5,r.y); g.stroke(); g.globalAlpha=1;
+    if(e.id===selId){g.strokeStyle=C.ink;g.lineWidth=2;roundRect(g,r.x-1,r.y-1,r.w+2,r.h+2,5);g.stroke();g.lineWidth=1;}
+    if(r.w>40){g.fillStyle=C.bg;g.save();g.beginPath();g.rect(r.x,r.y,r.w-4,r.h);g.clip();g.fillText(String(e.i+1),r.x+5,r.y+14);g.restore();}
+  }
+  // 再生位置
+  const px=(media.currentTime||0)*pps-x0;
+  if(!media.paused && (px<0||px>W*0.85)){sc.scrollLeft=Math.max(0,(media.currentTime)*pps-W*0.15);return;}
+  g.strokeStyle=C.moegi; g.lineWidth=2; g.beginPath(); g.moveTo(px,0); g.lineTo(px,H); g.stroke(); g.lineWidth=1;
+  drawOverview(C);
+}
+function drawOverview(C){
+  const g=ov.getContext('2d'), W=ov.clientWidth, Hh=40;
+  g.fillStyle=C.bg; g.fillRect(0,0,W,Hh);
+  if(!frames||!duration) return;
+  const per=frames.length/W, norm=ref*1.6;
+  g.fillStyle=C.quiet;
+  for(let x=0;x<W;x++){let m=0;const a=Math.floor(x*per),b=Math.floor((x+1)*per);for(let k=a;k<b;k++)if(frames[k]>m)m=frames[k];const h=Math.max(1,Math.min(1,m/norm)*14);g.fillRect(x,18-h,1,h*2);}
+  g.fillStyle=C.kaki; for(const e of ev){g.fillRect(Math.floor(e.t/duration*W),30,2,8);}
+  const vx=sc.scrollLeft/pps/duration*W, vw=Math.max(3,sc.clientWidth/pps/duration*W);
+  g.strokeStyle=C.ink; g.lineWidth=1.5; g.strokeRect(vx+.75,1.75,Math.min(vw,W-vx)-1.5,Hh-3.5); g.lineWidth=1;
+  g.fillStyle=C.moegi; g.fillRect(Math.floor((media.currentTime||0)/duration*W),0,2,Hh);
+}
+function roundRect(g,x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath();}
+
+/* ---------- タイムライン操作 ---------- */
+function hit(x,y){
+  assignLanes(); const x0=sc.scrollLeft;
+  for(let n=ev.length-1;n>=0;n--){const e=ev[n],r=blockRect(e,x0);if(x>=r.x&&x<=r.x+r.w&&y>=r.y&&y<=r.y+r.h)return e;}
+  return null;
+}
+function evPos(e){const r=cv.getBoundingClientRect();const x=e.clientX-r.left,y=e.clientY-r.top;return {x,y,t:(sc.scrollLeft+x)/pps};}
+cv.addEventListener('pointerdown',e=>{
+  if(!frames) return;
+  const p=evPos(e), h=hit(p.x,p.y);
+  if(h){selId=h.id;drag={e:h,grab:p.t-h.t,moved:false};cv.setPointerCapture(e.pointerId);}
+  else {selId=null;seek(p.t);}
+  updateSel(); draw(); sc.focus({preventScroll:true});
+});
+cv.addEventListener('pointermove',e=>{
+  const p=evPos(e);
+  if(drag){drag.e.t=clamp(p.t-drag.grab,0,Math.max(0,duration-0.1));drag.moved=true;draw();updateSel();return;}
+  cv.style.cursor=frames&&hit(p.x,p.y)?'grab':'default';
+});
+cv.addEventListener('pointerup',()=>{if(drag&&drag.moved) edited(); drag=null;});
+cv.addEventListener('dblclick',e=>{
+  if(!frames||!laughs.length) return;
+  const p=evPos(e); if(hit(p.x,p.y)) return;
+  const n=makeEvent(p.t,rnd(1.2,3)); ev.push(n); selId=n.id; edited(); updateSel();
+});
+sc.addEventListener('scroll',draw,{passive:true});
+sc.addEventListener('keydown',e=>{
+  const s=ev.find(x=>x.id===selId);
+  if(e.key===' '){e.preventDefault();if(duration)$('#play').click();return;}
+  if(!s) return;
+  if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();delSel();}
+  else if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();nudge(e.key==='ArrowLeft'?-0.1:0.1);}
+});
+ov.addEventListener('pointerdown',e=>{
+  const go=ev2=>{const r=ov.getBoundingClientRect();const t=(ev2.clientX-r.left)/r.width*duration;sc.scrollLeft=t*pps-sc.clientWidth/2;};
+  if(!duration) return; go(e); ov.setPointerCapture(e.pointerId);
+  const mv=ev2=>go(ev2), up=()=>{ov.removeEventListener('pointermove',mv);ov.removeEventListener('pointerup',up);};
+  ov.addEventListener('pointermove',mv); ov.addEventListener('pointerup',up);
+});
+$('#zoom').addEventListener('input',e=>{
+  const c=(sc.scrollLeft+sc.clientWidth/2)/pps; pps=+e.target.value; layout(); sc.scrollLeft=c*pps-sc.clientWidth/2; draw();
+});
+window.addEventListener('resize',layout);
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',draw);
+
+/* ---------- 選択中の笑い声 ---------- */
+function delSel(){ev=ev.filter(x=>x.id!==selId);selId=null;edited();updateSel();}
+function nudge(d){const s=ev.find(x=>x.id===selId);if(!s)return;s.t=clamp(s.t+d,0,duration);edited();updateSel();}
+function updateSel(){
+  const s=ev.find(x=>x.id===selId), body=$('#selBody');
+  if(!s){body.className='sel-empty';body.innerHTML='タイムラインの笑い声（柿色の帯）を押すと、ここで調整できます。';return;}
+  body.className='';
+  const L=laughs[s.i];
+  body.innerHTML=`<dl class="kv">
+      <dt>位置</dt><dd>${fmt(s.t)}</dd>
+      <dt>長さ</dt><dd>${s.dur.toFixed(1)}秒</dd>
+      <dt>素材</dt><dd>${s.i+1}. ${L?L.name.replace(/[<>&]/g,''):'（なし）'}</dd>
+      <dt>音量</dt><dd>${Math.round(s.gain*100)}%</dd>
+    </dl>
+    <div class="field"><label for="selDur">長さを変える</label><output>${s.dur.toFixed(1)}秒</output>
+      <input type="range" id="selDur" min="0.4" max="6" step="0.1" value="${s.dur.toFixed(1)}"></div>
+    <div class="field"><label for="selGain">音量を変える</label><output>${Math.round(s.gain*100)}%</output>
+      <input type="range" id="selGain" min="10" max="150" step="5" value="${Math.round(s.gain*100)}"></div>
+    <div class="row">
+      <button class="btn" id="bBack">◀ 0.1秒前へ</button>
+      <button class="btn" id="bFwd">0.1秒後へ ▶</button>
+      <button class="btn" id="bHear">ここから聴く</button>
+      <button class="btn" id="bReroll">別の笑いにする</button>
+      <button class="btn" id="bDel">削除</button>
+    </div>`;
+  $('#bBack').onclick=()=>nudge(-0.1);
+  $('#bFwd').onclick=()=>nudge(0.1);
+  $('#bHear').onclick=()=>{seek(Math.max(0,s.t-2));media.play();};
+  $('#bReroll').onclick=()=>{reroll(s);edited();updateSel();};
+  $('#bDel').onclick=delSel;
+  $('#selDur').oninput=e=>{s.dur=+e.target.value;fitToLaugh(s);e.target.previousElementSibling.textContent=s.dur.toFixed(1)+'秒';draw();};
+  $('#selDur').onchange=()=>{edited();updateSel();};
+  $('#selGain').oninput=e=>{s.gain=+e.target.value/100;e.target.previousElementSibling.textContent=e.target.value+'%';draw();};
+  $('#selGain').onchange=()=>{edited();updateSel();};
+}
+
+/* ---------- 書き出し ---------- */
+function download(blob,name){
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;
+  document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},5000);
+}
+function baseName(){return mediaFile?mediaFile.name.replace(/\.[^.]+$/,''):'rakugo';}
+$('#export').addEventListener('click',async()=>{
+  if(!ev.length||!duration) return;
+  stopPreview(); busy=true; updateUI();
+  try{
+    const N=Math.ceil(duration*OUT_SR), CH=2, bytes=N*CH*2;
+    const buf=new ArrayBuffer(44+bytes), dv=new DataView(buf);
+    const w=(o,s)=>{for(let i=0;i<s.length;i++)dv.setUint8(o+i,s.charCodeAt(i));};
+    w(0,'RIFF');dv.setUint32(4,36+bytes,true);w(8,'WAVE');w(12,'fmt ');dv.setUint32(16,16,true);
+    dv.setUint16(20,1,true);dv.setUint16(22,CH,true);dv.setUint32(24,OUT_SR,true);dv.setUint32(28,OUT_SR*CH*2,true);
+    dv.setUint16(32,CH*2,true);dv.setUint16(34,16,true);w(36,'data');dv.setUint32(40,bytes,true);
+    const pcm=new Int16Array(buf,44,N*CH), V=vol();
+    const list=[...ev].sort((a,b)=>a.t-b.t);
+    for(let n=0;n<list.length;n++){
+      const e=list[n], len=Math.ceil((e.dur+0.1)*OUT_SR);
+      const oc=new OfflineAudioContext(2,len,OUT_SR);
+      scheduleEvent(oc,e,0,oc.destination,V);
+      const r=await oc.startRendering(), L=r.getChannelData(0), R=r.getChannelData(1);
+      const s0=Math.round(e.t*OUT_SR);
+      for(let j=0;j<len;j++){
+        const idx=s0+j; if(idx>=N) break;
+        const a=pcm[idx*2]+L[j]*32767, b=pcm[idx*2+1]+R[j]*32767;
+        pcm[idx*2]=a>32767?32767:a<-32768?-32768:a;
+        pcm[idx*2+1]=b>32767?32767:b<-32768?-32768:b;
+      }
+      if(n%8===0){setStatus(`書き出し中… ${n+1} / ${list.length}`,'busy');await new Promise(r=>setTimeout(r));}
+    }
+    download(new Blob([buf],{type:'audio/wav'}),`${baseName()}_笑い声.wav`);
+    setStatus(`「${baseName()}_笑い声.wav」を書き出しました（${fmtLong(duration)}・${ev.length}か所）。編集ソフトで動画の頭にそろえて置いてください。`);
+  }catch(err){
+    console.error(err);
+    setStatus('書き出しに失敗しました。パソコンのメモリが足りない可能性があります。ほかのタブやアプリを閉じて、もう一度試してください。','error');
+  }
+  busy=false; updateUI();
+});
+
+$('#saveJson').addEventListener('click',()=>{
+  const data={tool:'koza-warai',version:1,media:mediaFile&&mediaFile.name,duration,laughs:laughs.map(l=>l.name),
+    events:ev.map(({t,i,off,dur,gain,rate,pan})=>({t,i,off,dur,gain,rate,pan}))};
+  download(new Blob([JSON.stringify(data,null,1)],{type:'application/json'}),`${baseName()}_笑い配置.json`);
+  setStatus('配置を保存しました。次回は同じ動画と笑い声を選んでから「配置を読み込む」で続きができます。');
+});
+$('#loadJson').addEventListener('change',async e=>{
+  const f=e.target.files[0]; if(!f) return; e.target.value='';
+  try{
+    const d=JSON.parse(await f.text());
+    if(!Array.isArray(d.events)) throw new Error('bad');
+    ev=d.events.map(x=>({id:nextId++,t:+x.t,i:+x.i||0,off:+x.off||0,dur:+x.dur||1.5,gain:+x.gain||.8,rate:+x.rate||1,pan:+x.pan||0}));
+    if(laughs.length) ev.forEach(x=>{if(x.i>=laughs.length)x.i=x.i%laughs.length;fitToLaugh(x);});
+    selId=null; edited(); updateSel();
+    setStatus(`配置を読み込みました（${ev.length}か所）。`+(laughs.length?'':'②で笑い声ファイルを選ぶと音が鳴ります。'));
+  }catch(err){setStatus('配置ファイルを読み込めませんでした。このツールで保存したJSONを選んでください。','error');}
+});
+
+/* ---------- 画面の状態 ---------- */
+function updateUI(){
+  $('#run').disabled=busy||!frames||!laughs.length;
+  $('#run').textContent=ev.length?'配置をやり直す':'自動配置';
+  $('#play').disabled=!duration;
+  $('#export').disabled=busy||!ev.length||!laughs.length||!duration;
+  $('#saveJson').disabled=!ev.length;
+  $('#count').textContent=ev.length;
+}
+for(const [id,f] of [['minGap',v=>v+'秒'],['amount',v=>v+'%'],['th',v=>v+'%'],['vol',v=>v+'%']]){
+  const el=$('#'+id), out=$('#'+id+'V'), up=()=>{out.textContent=f(el.value);};
+  el.addEventListener('input',()=>{up(); if(id==='th')draw(); if(id==='vol'&&master)master.gain.value=vol();}); up();
+}
+layout(); updateUI();
+</script>
+</body>
+</html>
